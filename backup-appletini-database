@@ -6,25 +6,29 @@ from argparse import ArgumentParser
 user = "www-data"
 password = "Q8JdU5MY7dDr5XEU"
 database = "hybrida_dev"
+mysql_opts = [
+    "skip-comments",
+    "skip-set-charset",
+    "skip-lock-tables",
+]
 
 
 def get_command():
-    mysql_opts = [
-        "no-data",
-        "skip-comments",
-        "skip-set-charset",
-        "skip-lock-tables",
-    ]
-
     opts = " ".join(["--" + alt for alt in mysql_opts])
-    return "mysqldump -u {} -p{} {} {}".format(user, password, database, opts).split()
+    command = "mysqldump -u {} -p{} {} {}".format(user, password, database, opts)
+    command_split = command.split()
+    print(command)
+    return command_split
 
 
 def get_output(command):
     proc = sp.Popen(command, stdout=sp.PIPE)
     lines = []
     for line in proc.stdout:
-        lines.append(line.decode("utf-8"))
+        if type(line) is type("random streng"):
+            lines.append(line)
+        elif type(line) == type(b'Byte'):
+            lines.append(line.decode("utf-8"))
     return "".join(lines)
 
 
@@ -76,6 +80,12 @@ def get_sql():
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("database")
+    parser.add_argument("data_or_structure")
     args = parser.parse_args()
     database = args.database
+    structure = args.data_or_structure
+    if structure == "structure":
+        mysql_opts.append("no-data")
+    elif structure == "data":
+        mysql_opts.append("no-create-info")
     print(get_sql())
