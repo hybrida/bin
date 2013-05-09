@@ -1,0 +1,3 @@
+cd dev;
+hg push ssh://sighol@b52.ivt.ntnu.no//var/www/phabricator/repos/dev
+

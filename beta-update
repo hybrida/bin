@@ -1,0 +1,8 @@
+#! /bin/bash
+
+cd /var/www/beta
+
+hg qpop -a
+hg pull
+hg up -C
+hg qpush -a

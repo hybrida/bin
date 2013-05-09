@@ -1,0 +1,81 @@
+#! /usr/bin/env python
+
+import subprocess as sp
+from argparse import ArgumentParser
+
+user = "www-data"
+password = "Q8JdU5MY7dDr5XEU"
+database = "hybrida_dev"
+
+
+def get_command():
+    mysql_opts = [
+        "no-data",
+        "skip-comments",
+        "skip-set-charset",
+        "skip-lock-tables",
+    ]
+
+    opts = " ".join(["--" + alt for alt in mysql_opts])
+    return "mysqldump -u {} -p{} {} {}".format(user, password, database, opts).split()
+
+
+def get_output(command):
+    proc = sp.Popen(command, stdout=sp.PIPE)
+    lines = []
+    for line in proc.stdout:
+        lines.append(line.decode("utf-8"))
+    return "".join(lines)
+
+
+def get_sql():
+
+    pre = """/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+""".split("\n")
+
+    post = """/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+""".split("\n")
+
+    use_database = "use " + database + ";\n"
+    output = use_database + get_output(get_command())
+    lines = output.split("\n")
+    done_lines = []
+    to_delete = 0
+
+    for line in lines:
+        if to_delete > 0:
+            to_delete -= 1
+            continue
+        if "DROP TABLE IF" in line:
+            to_delete = 2
+            continue
+        if "/*" in line and "SET" in line:
+            continue
+            pass
+        if "CREATE TABLE" in line:
+            line = line.replace("CREATE TABLE", "\n\nCREATE TABLE IF NOT EXISTS")
+        done_lines.append(line)
+
+    done_lines = pre + done_lines + post
+    return "\n".join(done_lines).strip()
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("database")
+    args = parser.parse_args()
+    database = args.database
+    print(get_sql())
