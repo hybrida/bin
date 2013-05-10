@@ -1,11 +1,8 @@
 #! /usr/bin/env python
 
-from argparse import ArgumentParser
 import os
 import re
-from pprint import pprint
 from subprocess import Popen, PIPE
-import subprocess
 
 scripts_folder = "/var/www/beta/scripts/"
 os.chdir(scripts_folder)
