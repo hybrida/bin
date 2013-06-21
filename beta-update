@@ -5,4 +5,10 @@ cd /var/www/beta
 hg qpop -a
 hg pull
 hg up -C
-hg qpush -a
+hg qpush min-style.css
+cd /var/www/beta/style/
+rm min.css
+cat * > min.css
+
+hg st
+
