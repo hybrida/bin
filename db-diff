@@ -1,0 +1,11 @@
+#! /bin/bash
+
+backup="/var/lib/mercurial-server/bin/backup-appletini-database"
+
+$backup hybrida_dev structure > hybrida_dev.structure.sql
+$backup hybrida	    structure > hybrida.structure.sql
+
+vimdiff hybrida_dev.structure.sql hybrida.structure.sql
+
+rm hybrida_dev.structure.sql hybrida.structure.sql
+
