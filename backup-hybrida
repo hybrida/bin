@@ -1,0 +1,11 @@
+#! /bin/bash
+
+date=$(date +%Y-%m-%d)
+name=$date-hybrida
+
+get=/var/lib/mercurial-server/bin/get-database-content
+
+cd /var/lib/mercurial-server/backup/database/hybrida
+
+$get hybrida structure > $name-structure.sql
+$get hybrida data > $name-data.sql
