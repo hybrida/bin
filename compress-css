@@ -1,0 +1,22 @@
+#! /bin/bash
+
+hgroot=`hg root`
+styledir="$hgroot/style"
+lessdir="$styledir/less"
+cssdir="$styledir/css"
+echo "Antar at less-mappen ligger i $lessdir"
+
+cd "$cssdir"
+
+if [[ -f min.css ]]; then
+	rm min.css
+fi
+
+cd "$lessdir"
+
+cat *.less > min.less
+lessc -O1 --yui-compress min.less > "$cssdir/min.css"
+
+rm min.less
+
+echo "Stilarkene er nå ferdig prosessert"
