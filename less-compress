@@ -15,7 +15,7 @@ fi
 cd "$lessdir"
 
 cat *.less > min.less
-lessc -O1 --yui-compress min.less > "$cssdir/min.css"
+lessc -x min.less > "$cssdir/min.css"
 
 rm min.less
 
