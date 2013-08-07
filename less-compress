@@ -6,12 +6,6 @@ lessdir="$styledir/less"
 cssdir="$styledir/css"
 echo "Antar at less-mappen ligger i $lessdir"
 
-cd "$cssdir"
-
-if [[ -f min.css ]]; then
-	rm min.css
-fi
-
 cd "$lessdir"
 
 cat *.less > min.less

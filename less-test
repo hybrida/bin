@@ -1,0 +1,17 @@
+#! /bin/bash
+
+hgroot=`hg root`
+styledir="$hgroot/style"
+lessdir="$styledir/less"
+cssdir="$styledir/css"
+
+cd "$lessdir"
+
+for file in *.less; do
+	lessc $file > $file.css;
+done;
+
+confirm "Ønsker du å slette?" &&
+for file in *.less; do
+	rm $file.css;
+done;
