@@ -1,2 +1,2 @@
 #! /bin/bash
-/usr/local/share/mercurial-server/refresh-auth
+/usr/share/mercurial-server/refresh-auth

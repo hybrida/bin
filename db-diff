@@ -1,6 +1,7 @@
 #! /bin/bash
 
 backup="/var/lib/mercurial-server/bin/get-database-content"
+backup="/var/www/bin/get-database-content"
 
 $backup hybrida_dev structure > hybrida_dev.structure.sql
 $backup hybrida	    structure > hybrida.structure.sql
