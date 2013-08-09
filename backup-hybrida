@@ -3,7 +3,7 @@
 date=$(date +%Y-%m-%d)
 name=$date-hybrida
 
-get=/var/lib/mercurial-server/bin/get-database-content
+get=/var/www/bin/get-database-content
 
 cd /var/lib/mercurial-server/backup/database/hybrida
 
