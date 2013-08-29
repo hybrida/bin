@@ -22,9 +22,7 @@ class DatabaseUpdate:
 			if not isfile(file_path):
 				with open(file_path, "w"): pass
 
-
-
-	def md5(self, file_path):
+	def hash(self, file_path):
 		lines = []
 		with open(file_path, "r") as file:
 			for line in file:
@@ -49,8 +47,8 @@ class DatabaseUpdate:
 			print("Ingen database-oppdateringer")
 
 	def calculate_hashes(self):
-		self.struc_new = self.md5(self.struc_path)
-		self.data_new = self.md5(self.data_path)
+		self.struc_new = self.hash(self.struc_path)
+		self.data_new = self.hash(self.data_path)
 
 	def read(self, file_path):
 		with open(file_path, "r") as file:
