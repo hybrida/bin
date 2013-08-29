@@ -7,10 +7,7 @@ cd $prod
 hg qpop -a
 hg pull
 hg up -C
-hg qpush min-style.css
-cd $prod/style/
-rm min.css
-cat * > min.css
+hg qpush -a
 
-hg st
-
+echo "oppdaterer css"
+./protected/yiic less min
