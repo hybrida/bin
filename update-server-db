@@ -1,78 +1,131 @@
-#! /usr/bin/ruby
+#! /usr/bin/env python
 
-require 'digest/md5'
-require 'optparse'
+import hashlib
+import os, os.path
+import argparse
 
-class DatabasUpdater
+class DatabaseUpdate:
 
-	def initialize
-		@db_path = "/var/www/dev/db/"
-		@structure_path =  @db_path + "structure.sql"
-		@data_path = @db_path + "data.sql"
-	end
+	def __init__(self, db_dir="/var/www/yii/db/"):
+		self.db_dir = db_dir
+		self.struc_path = os.path.join(db_dir, "structure.sql")
+		self.data_path = os.path.join(db_dir, "data.sql")
 
-	def md5(file_path)
-		Digest::MD5.hexdigest(File.read(file_path))
-	end
+		self.struc_hash = self.struc_path + ".hash"
+		self.data_hash = self.data_path + ".hash"
+		self.mysql_start = "mysql -uwww-data-update -pQzjS7r3CXWHxQwT4q "
+		self.create_hash_files()
 
-	def update_if_new!
-		struc_old = File.read(@structure_path + ".md5")
-		data_old = File.read(@data_path + ".md5")
-
-		@struc_new = md5 @structure_path
-		@data_new = md5 @data_path
-
-		if struc_old != @struc_new || data_old != @data_new
-			update_force!
-		else
-			puts 'Ingen database-oppdateringer'
-		end
-	end
-
-	def update_force!
-		puts "Starter database-oppdatering"
-		do_update!
-		puts "Ferdig med database-oppdateringer\n"
-		puts "Skriver nye md5-verdier"
-		write @structure_path + ".md5", @struc_new
-		write @data_path + ".md5", @data_new
-	end
-
-	def write filepath, string
-		file = File.open filepath, "w"
-		file.write string
-		file.close
-	end
-
-	def do_update!
-		puts "Sletter databasen"
-		mysql! " -e 'DROP DATABASE `hybrida_dev`;'"
-		puts "Legger inn structure.sql"
-		mysql! "< #{@structure_path}"
-		puts "Legger inn data.sql"
-		mysql! "< #{@data_path}"
-	end
-		
-	def mysql!(sql)
-		mysql_string = "mysql -uhybrida_dev -p3phbUPPBwdEFAMv4 " + sql
-		`#{mysql_string}`
-	end
-end
+	def create_hash_files(self):
+		isfile = os.path.isfile
+		for file_path in [self.struc_hash, self.data_hash]:
+			if not isfile(file_path):
+				with open(file_path, "w"): pass
 
 
-def run
-	options = {:force => false}
-	OptionParser.new do |opts|
-		opts.on("-f", "--force", "Force db-update") do |v|
-			options[:force] = true
-		end
-	end.parse!
-	updater = DatabasUpdater.new
-	if options[:force]
-		updater.update_force!
-	else
-		updater.update_if_new!
-	end
-end
 
-run
+	def md5(self, file_path):
+		lines = []
+		with open(file_path, "r") as file:
+			for line in file:
+				lines.append(line)
+		joined = "".join(lines).encode("utf-8")
+		hash = hashlib.sha224(joined)
+		return hash.hexdigest()
+
+	def update_if_new(self):
+		struc_old = self.read(self.struc_hash)
+		data_old = self.read(self.data_hash)
+
+		self.calculate_hashes()
+
+		data_eq = data_old == self.data_new
+		struc_eq = struc_old == self.struc_new
+		should_update = not data_eq or not struc_eq
+
+		if should_update:
+			self.update_force()
+		else:
+			print("Ingen database-oppdateringer")
+
+	def calculate_hashes(self):
+		self.struc_new = self.md5(self.struc_path)
+		self.data_new = self.md5(self.data_path)
+
+	def read(self, file_path):
+		with open(file_path, "r") as file:
+			lines = file.readlines()
+			return "".join(lines)
+
+	def update_force(self):
+		self.calculate_hashes()
+		print("Starter database-oppdatering")
+		self.do_update()
+		print("Ferdig med database-oppdateringer\n")
+		print("Skriver nye hash-verdier")
+		self.write(self.struc_hash, self.struc_new)
+		self.write(self.data_hash, self.data_new)
+
+	def write(self, file_path, string):
+		with open(file_path, "w") as file:
+			file.write(string)
+
+	def do_update(self):
+		print("Sletter databasen")
+		self.mysql_query('DROP DATABASE hybrida_dev;')
+		print("Legger inn structure.sql")
+		self.mysql_import(self.struc_path)
+		print("Legger inn data.sql")
+		self.mysql_import(self.data_path)
+
+	def mysql_query(self, sql):
+		cmd = self.mysql_start + "-e " + "'" + sql + "'"
+		self.system(cmd)
+
+
+	def mysql_import(self, file):
+		cmd = self.mysql_start + " < " + file
+		self.system(cmd)
+
+	def system(self, cmd):
+		os.system(cmd)
+
+
+# >>> import hashlib
+# >>> m = hashlib.md5()
+# >>> m.update("Nobody inspects")
+# >>> m.update(" the spammish repetition")
+# >>> m.digest()
+# '\xbbd\x9c\x83\xdd\x1e\xa5\xc9\xd9\xde\xc9\xa1\x8d\xf0\xff\xe9'
+# >>> m.digest_size
+# 16
+# >>> m.block_size
+# 64
+
+def test():
+	"""
+	>>> d = DatabaseUpdate()
+	>>> hash = d.md5(d.data_path)
+	>>> print(len(hash) > 10)
+	True
+	"""
+
+def run():
+	args = argparse.ArgumentParser()
+	args.add_argument("-f", "--force",
+					  help="tving ny oppdatering",
+					  action="store_const",
+					  const=True, default=False)
+	args.add_argument("database_directory", help="f.eks /var/www/hybrida-prod/db")
+	args = args.parse_args()
+	du = DatabaseUpdate(args.database_directory)
+	if not args.force:
+		du.update_if_new()
+	else:
+		du.update_force()
+
+
+if __name__ == "__main__":
+	import doctest
+	doctest.testmod()
+	run()

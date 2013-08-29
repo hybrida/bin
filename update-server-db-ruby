@@ -1,0 +1,78 @@
+#! /usr/bin/ruby
+
+require 'digest/md5'
+require 'optparse'
+
+class DatabasUpdater
+
+	def initialize
+		@db_path = "/var/www/dev/db/"
+		@structure_path =  @db_path + "structure.sql"
+		@data_path = @db_path + "data.sql"
+	end
+
+	def md5(file_path)
+		Digest::MD5.hexdigest(File.read(file_path))
+	end
+
+	def update_if_new!
+		struc_old = File.read(@structure_path + ".md5")
+		data_old = File.read(@data_path + ".md5")
+
+		@struc_new = md5 @structure_path
+		@data_new = md5 @data_path
+
+		if struc_old != @struc_new || data_old != @data_new
+			update_force!
+		else
+			puts 'Ingen database-oppdateringer'
+		end
+	end
+
+	def update_force!
+		puts "Starter database-oppdatering"
+		do_update!
+		puts "Ferdig med database-oppdateringer\n"
+		puts "Skriver nye md5-verdier"
+		write @structure_path + ".md5", @struc_new
+		write @data_path + ".md5", @data_new
+	end
+
+	def write filepath, string
+		file = File.open filepath, "w"
+		file.write string
+		file.close
+	end
+
+	def do_update!
+		puts "Sletter databasen"
+		mysql! " -e 'DROP DATABASE `hybrida_dev`;'"
+		puts "Legger inn structure.sql"
+		mysql! "< #{@structure_path}"
+		puts "Legger inn data.sql"
+		mysql! "< #{@data_path}"
+	end
+		
+	def mysql!(sql)
+		mysql_string = "mysql -uhybrida_dev -p3phbUPPBwdEFAMv4 " + sql
+		`#{mysql_string}`
+	end
+end
+
+
+def run
+	options = {:force => false}
+	OptionParser.new do |opts|
+		opts.on("-f", "--force", "Force db-update") do |v|
+			options[:force] = true
+		end
+	end.parse!
+	updater = DatabasUpdater.new
+	if options[:force]
+		updater.update_force!
+	else
+		updater.update_if_new!
+	end
+end
+
+run
