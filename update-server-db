@@ -2,7 +2,7 @@
 
 import hashlib
 import os, os.path
-import argparse
+import sys
 
 class DatabaseUpdate:
 
@@ -28,8 +28,18 @@ class DatabaseUpdate:
 			for line in file:
 				lines.append(line)
 		joined = "".join(lines)
-		hash = hashlib.sha224(joined)
+		hash = self.sha(joined)
 		return hash.hexdigest()
+
+	def sha(self, s):
+		try:
+			return hashlib.sha224(s)
+		except:
+			try:
+				enc = s.encode("utf-8")
+				return hashlib.sha224(enc)
+			except:
+				raise RuntimeError("Klarte ikke hashe")
 
 	def update_if_new(self):
 		struc_old = self.read(self.struc_hash)
@@ -88,21 +98,56 @@ class DatabaseUpdate:
 	def system(self, cmd):
 		os.system(cmd)
 
+class OptionParser:
+
+	def __init__(self):
+		self.long = []
+		self.short = []
+		self.args = []
+
+	def parse_args(self):
+
+		for arg in sys.argv[1:]:
+			if arg.startswith("--"):
+				self.long.append(arg.replace("--", ""))
+			elif arg.startswith("-"):
+				self.short.append(arg.replace("-", ""))
+			else:
+				self.args.append(arg)
+
+	def has(self, long=None, short=None):
+		if long in self.long or short in self.short:
+			return True
+
 
 def run():
-	args = argparse.ArgumentParser()
-	args.add_argument("-f", "--force",
-					  help="tving ny oppdatering",
-					  action="store_const",
-					  const=True, default=False)
-	args.add_argument("database_directory", help="f.eks /var/www/hybrida-prod/db")
-	args = args.parse_args()
-	du = DatabaseUpdate(args.database_directory)
-	if not args.force:
-		du.update_if_new()
-	else:
+	parser = OptionParser()
+	parser.parse_args()
+	if parser.has(long="help", short="h"):
+		print_help()
+		return
+	if len(parser.args) < 1:
+		print("du glemte å putte inn database-mappe\n")
+		print_help()
+		return
+	du = DatabaseUpdate(parser.args[0])
+	if parser.has(long="force", short="f"):
 		du.update_force()
+	else:
+		du.update_if_new()
 
+
+def print_help():
+	help = """usage: update-server-db [-h] [-f] database_directory
+
+	positional arguments:
+	  database_directory  f.eks /var/www/hybrida-prod/db
+
+	optional arguments:
+	  -h, --help          show this help message and exit
+	  -f, --force         tving ny oppdatering
+	"""
+	print(help)
 
 if __name__ == "__main__":
 	run()
