@@ -6,14 +6,14 @@ import argparse
 
 class DatabaseUpdate:
 
-	def __init__(self, db_dir="/var/www/yii/db/"):
+	def __init__(self, db_dir):
 		self.db_dir = db_dir
 		self.struc_path = os.path.join(db_dir, "structure.sql")
 		self.data_path = os.path.join(db_dir, "data.sql")
 
 		self.struc_hash = self.struc_path + ".hash"
 		self.data_hash = self.data_path + ".hash"
-		self.mysql_start = "mysql -uwww-data-update -pQzjS7r3CXWHxQwT4q "
+		self.mysql_start = "mysql -uwww-data-update -p6yPxQZfceThVTRqS "
 		self.create_hash_files()
 
 	def create_hash_files(self):
@@ -29,7 +29,7 @@ class DatabaseUpdate:
 		with open(file_path, "r") as file:
 			for line in file:
 				lines.append(line)
-		joined = "".join(lines).encode("utf-8")
+		joined = "".join(lines)
 		hash = hashlib.sha224(joined)
 		return hash.hexdigest()
 
@@ -91,25 +91,6 @@ class DatabaseUpdate:
 		os.system(cmd)
 
 
-# >>> import hashlib
-# >>> m = hashlib.md5()
-# >>> m.update("Nobody inspects")
-# >>> m.update(" the spammish repetition")
-# >>> m.digest()
-# '\xbbd\x9c\x83\xdd\x1e\xa5\xc9\xd9\xde\xc9\xa1\x8d\xf0\xff\xe9'
-# >>> m.digest_size
-# 16
-# >>> m.block_size
-# 64
-
-def test():
-	"""
-	>>> d = DatabaseUpdate()
-	>>> hash = d.md5(d.data_path)
-	>>> print(len(hash) > 10)
-	True
-	"""
-
 def run():
 	args = argparse.ArgumentParser()
 	args.add_argument("-f", "--force",
@@ -126,6 +107,4 @@ def run():
 
 
 if __name__ == "__main__":
-	import doctest
-	doctest.testmod()
 	run()
