@@ -3,8 +3,11 @@
 import subprocess as sp
 from argparse import ArgumentParser
 
-user = "www-data"
-password = "Q8JdU5MY7dDr5XEU"
+user = "www-data-backup"
+password = "EaLmptNe39aCUM6n"
+
+# user = "root"
+# password = "manuel"
 database = "hybrida_dev"
 mysql_opts = [
     "skip-comments",

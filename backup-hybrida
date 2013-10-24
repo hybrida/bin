@@ -1,11 +1,66 @@
-#! /bin/bash
+#! /usr/bin/env python3
 
-date=$(date +%Y-%m-%d)
-name=$date-hybrida
+from time import gmtime, strftime
+from subprocess import Popen, PIPE
+import os, os.path
+import shutil
 
-get=/var/www/bin/get-database-content
+current_timestamp = strftime("%Y-%m-%d_%H-%M-%S", gmtime())
 
-cd /var/lib/mercurial-server/backup/database/hybrida
+user = "www-data-backup"
+password = "EaLmptNe39aCUM6n"
 
-$get hybrida structure > $name-structure.sql
-$get hybrida data > $name-data.sql
+root_folder = os.path.join("/home/hg/backup/database", current_timestamp)
+
+def get_databases():
+	databases = []
+	cmd = "show databases;"
+	p = Popen(["mysql", "-u" + user, "-p" + password, "-e", cmd], stdout=PIPE)
+	for line in p.stdout:
+		line = line.decode("utf-8").strip()
+		if line.startswith("hybrida"):
+			databases.append(line)
+		elif line.startswith("phabricator"):
+			databases.append(line)
+	return databases
+
+def backup_databases(databases):
+	for database in databases:
+		backup_database(database)
+
+def backup_database(database):
+	path = os.path.join(root_folder, database)
+	print("database: ", database)
+
+	get = "/var/www/bin/get-database-content"
+	data_file_name = path + "-data.sql"
+	with open(data_file_name, "w") as data_file:
+		pdata = Popen([get, database, "data"], stdout=data_file)
+		pdata.wait()
+		pass
+	struc_file_name = path + "-structure.sql"
+	with open(struc_file_name, "w") as struc_file:
+		pstructure = Popen([get, database, "structure"], stdout=struc_file)
+		pstructure.wait()
+		pass
+
+def compress():
+	cmd = ["tar", "cvfz", root_folder + ".tgz", root_folder]
+	p = Popen(cmd, stdout=PIPE)
+	p.wait()
+
+
+def mkdir_p(folder):
+	if not os.path.exists(folder):
+		os.mkdir(folder)
+
+def remove_text_backup():
+	shutil.rmtree(root_folder)
+
+
+if __name__ == "__main__":
+	mkdir_p(root_folder)
+	databases = get_databases()
+	backup_databases(databases)
+	compress()
+	remove_text_backup();

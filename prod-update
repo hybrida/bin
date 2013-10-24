@@ -4,10 +4,19 @@ prod="/var/www/hybrida-prod"
 
 cd $prod
 
-hg qpop -a
-hg pull
-hg up -C
-hg qpush -a
+git checkout production
+
+git pull origin master
+
+git merge master
+
+
 
 echo "oppdaterer css"
-./protected/yiic less min
+rm -f css/min.css
+cd css
+cat * > min.css
+
+cd $prod
+
+echo "Oppdatering er ferdig"
