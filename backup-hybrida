@@ -10,7 +10,7 @@ current_timestamp = strftime("%Y-%m-%d_%H-%M-%S", gmtime())
 user = "www-data-backup"
 password = "EaLmptNe39aCUM6n"
 
-root_folder = os.path.join("/home/hg/backup/database", current_timestamp)
+root_folder = os.path.join("/home/git/backup/database", current_timestamp)
 
 def get_databases():
 	databases = []
@@ -32,7 +32,7 @@ def backup_database(database):
 	path = os.path.join(root_folder, database)
 	print("database: ", database)
 
-	get = "/var/www/bin/get-database-content"
+	get = "/home/git/bin/get-database-content"
 	data_file_name = path + "-data.sql"
 	with open(data_file_name, "w") as data_file:
 		pdata = Popen([get, database, "data"], stdout=data_file)
