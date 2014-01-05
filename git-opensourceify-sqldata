@@ -5,6 +5,11 @@ import sqlite3
 import hashlib
 import re
 import argparse
+from pprint import pprint
+
+"""
+Fjerner alle sql-data som kan være sensitive (epost, tlf o.s.v.)
+"""
 
 class Store:
 
@@ -63,16 +68,16 @@ class OpensourceifySqldata:
 		self.files = self.get_files(".")
 		self.db_files = ["backup.sql", "db/backup.sql"]
 		self.store = Store("/var/www/store.db")
-		self.hash = hashlib.md5()
 
 	def get_files(self, path):
 		files = os.listdir(path)
 		return [file for file in files if os.path.isfile(file)]
 
-	def get_file_contents(self, path):
-		with open(path, "r") as file:
-			content = "".join(file.readlines())
-			return content
+	def get_file_lines(self, path):
+		with open(path, "rb") as file:
+			return [x.rstrip().decode() for x in file]
+
+
 
 	def write_file_contents(self, path, content):
 		with open(path, "w") as file:
@@ -97,7 +102,8 @@ class OpensourceifySqldata:
 
 
 	def rewrite_and_hash(self, filepath):
-		old_content = self.get_file_contents(filepath)
+		old_lines = self.get_file_lines(filepath)
+		old_content = "\n".join(old_lines) + "\n"
 		hash = hashlib.sha224(old_content.encode()).hexdigest()
 
 		prev = self.store.get(hash)
@@ -107,21 +113,24 @@ class OpensourceifySqldata:
 			self.write_file_contents(filepath, prev)
 			return
 
-		new_content = self.rewrite(old_content)
+		new_lines = self.rewrite(old_lines)
+
+		self.write_diff(hash, old_lines, new_lines)
+
+		new_content = "\n".join(new_lines) + "\n"
 
 		self.store.push(hash, new_content)
 		self.write_file_contents(filepath, new_content)
 		self.store.commit()
 
-	def rewrite(self, content):
-		lines = content.split("\n")
+	def rewrite(self, lines):
 		line_len_begin = len(lines)
 		tables = ["user", "user_new", "user_info", "hyb_user", "hyb_user_info", "hyb_user_new"]
 		for table in tables:
 			lines = self.rewrite_table(table, lines)
 		line_len_end = len(lines)
 		print("before:", line_len_begin, "after:", line_len_end)
-		return "\n".join(lines)
+		return lines
 
 	def rewrite_table(self, table, lines):
 		matches = []
@@ -140,7 +149,7 @@ class OpensourceifySqldata:
 					matches.append(i)
 					new_lines.append(line)
 			elif matches and not done and kept_users_prog.match(line):
-				the_line = line[:-1]
+				the_line = line[:-1].replace("sighol@gmail.com", "not_real@gmail.com")
 				kept_users.append(the_line)
 			elif matches and line.strip() == "" and not done:
 				done = True
@@ -153,11 +162,31 @@ class OpensourceifySqldata:
 			else:
 				new_lines.append(line)
 
-
 		return new_lines
 
+	def write_diff(self, hash, old_lines, new_lines):
+		# Skal se hvilke som som er tatt ut
+		new_set = set(new_lines)
+		not_in_new = []
+		old_set = set(old_lines)
+		not_in_old = []
 
+		for line in old_lines:
+			if line not in new_set:
+				not_in_new.append(line)
 
+		for line in new_lines:
+			if line not in old_set:
+				not_in_old.append(line)
+
+		filepath = "/var/www/diffs/"
+		os.system("mkdir -p " + filepath)
+
+		with open(filepath + hash, 'w') as file:
+			for line in not_in_new:
+				file.write("- " + line + "\n")
+			for line in not_in_old:
+				file.write("+ " + line + "\n")
 
 
 if __name__ == "__main__":
