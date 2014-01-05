@@ -1,0 +1,180 @@
+#! /usr/bin/env python
+
+import os, os.path
+import sqlite3
+import hashlib
+import re
+import argparse
+
+class Store:
+
+	def __init__(self, name):
+		self.con = sqlite3.connect(name)
+		self.cursor = self.con.cursor()
+
+
+	def setup_db(self):
+		sql = "create table store (key varchar(255) primary key, value TEXT)"
+		self.cursor.execute(sql)
+
+
+	def get(self, key):
+		sql = "select value from store where key = ?"
+		ans = self.cursor.execute(sql, (key,))
+		value = ans.fetchone()
+		if value:
+			return value[0]
+		else:
+			return None
+
+	def push(self, key, value):
+		sql = "insert into store VALUES (?, ?)"
+		self.cursor.execute(sql, (key, value))
+
+	def commit(self):
+		self.con.commit()
+
+	def reset(self):
+		self.drop()
+		self.setup_db()
+
+	def drop(self):
+		sql = "drop table store"
+		self.cursor.execute(sql)
+
+	def count(self):
+		sql = "select count(key) from store"
+		res = self.cursor.execute(sql)
+		value = res.fetchone()
+		return value[0]
+
+	def list(self):
+		sql = "select key from store"
+		res = self.cursor.execute(sql)
+		values = res.fetchall()
+		return [v[0] for v in values]
+
+
+
+
+class OpensourceifySqldata:
+
+	def __init__(self):
+		self.files = self.get_files(".")
+		self.db_files = ["backup.sql", "db/backup.sql"]
+		self.store = Store("/var/www/store.db")
+		self.hash = hashlib.md5()
+
+	def get_files(self, path):
+		files = os.listdir(path)
+		return [file for file in files if os.path.isfile(file)]
+
+	def get_file_contents(self, path):
+		with open(path, "r") as file:
+			content = "".join(file.readlines())
+			return content
+
+	def write_file_contents(self, path, content):
+		with open(path, "w") as file:
+			file.write(content)
+
+
+	def work(self):
+		files = ["backup.sql", "db/backup.sql", "db/data.sql", "db/db.sql"]
+		found = []
+
+		for file in files:
+			if os.path.isfile(file):
+				print(file, end=": ")
+				self.rewrite_and_hash(file)
+				found.append(file)
+
+		if not found:
+			print("Fant ingen DB-filer")
+		elif len(found) > 1:
+			print("Fant flere db-filer:", found)
+
+
+
+	def rewrite_and_hash(self, filepath):
+		old_content = self.get_file_contents(filepath)
+		hash = hashlib.sha224(old_content.encode()).hexdigest()
+
+		prev = self.store.get(hash)
+
+		if prev:
+			print("Store:", hash)
+			self.write_file_contents(filepath, prev)
+			return
+
+		new_content = self.rewrite(old_content)
+
+		self.store.push(hash, new_content)
+		self.write_file_contents(filepath, new_content)
+		self.store.commit()
+
+	def rewrite(self, content):
+		lines = content.split("\n")
+		line_len_begin = len(lines)
+		tables = ["user", "user_new", "user_info", "hyb_user", "hyb_user_info", "hyb_user_new"]
+		for table in tables:
+			lines = self.rewrite_table(table, lines)
+		line_len_end = len(lines)
+		print("before:", line_len_begin, "after:", line_len_end)
+		return "\n".join(lines)
+
+	def rewrite_table(self, table, lines):
+		matches = []
+		done = False
+		new_lines = []
+		insert_prog = re.compile(r"^INSERT INTO \`{}\`".format(table))
+		kept_users_prog = re.compile(r"\((381|466)")
+		kept_users = []
+
+
+		for i, line in enumerate(lines):
+			if insert_prog.match(line):
+				if matches:
+					continue
+				else:
+					matches.append(i)
+					new_lines.append(line)
+			elif matches and not done and kept_users_prog.match(line):
+				the_line = line[:-1]
+				kept_users.append(the_line)
+			elif matches and line.strip() == "" and not done:
+				done = True
+				users = ",\n".join(kept_users) + ";"
+				# print(table, i, [u[0:30] for u in kept_users])
+				new_lines.append(users)
+				new_lines.append(line)
+			elif matches and not done:
+				pass
+			else:
+				new_lines.append(line)
+
+
+		return new_lines
+
+
+
+
+
+if __name__ == "__main__":
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--reset", action="store_true")
+	parser.add_argument("--count", action="store_true")
+	parser.add_argument("--list", action="store_true")
+	args = parser.parse_args()
+
+	o = OpensourceifySqldata()
+
+	if args.reset:
+		o.store.reset()
+	elif args.count:
+		count = o.store.count()
+		print(count)
+	elif args.list:
+		print(o.store.list())
+	else:
+		o.work()
